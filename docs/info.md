@@ -9,12 +9,10 @@ You can also include images in this folder and reference them in the markdown. E
 
 ## How it works
 
-Explain how your project works
-
+A simple 8-bit accumulator CPU with a multi-cycle fetch/decode/execute control FSM. Program and data memory are external: the CPU puts the memory address on the output pins and reads data from the input pins.
 ## How to test
 
-Explain how to use your project
-
+Work in progress. The CPU will be tested with the RP2040 on the demo board
 ## External hardware
 
-List external hardware used in your project (e.g. PMOD, LED display, etc), if any
+The RP2040 on the Tiny Tapeout demo board, emulating program and data memory.
