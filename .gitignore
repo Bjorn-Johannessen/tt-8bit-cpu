@@ -11,3 +11,10 @@ test/sim_build
 test/__pycache__/
 test/results.xml
 test/gate_level_netlist.v
+
+# Simulation and Python build artifacts (any folder)
+sim_build/
+results.xml
+__pycache__/
+*.fst
+*.vcd
