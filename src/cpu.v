@@ -21,20 +21,21 @@ module cpu (
         S_EXEC    = 2'd2,
         S_HALT    = 2'd3;
 
+    // op-codes
     localparam [3:0]
         OPC_NOP   = 4'h0,
-        OPC_LD    = 4'h1,
-        OPC_STA   = 4'h2,
-        OPC_ADD   = 4'h3,
-        OPC_ADC   = 4'h4,
-        OPC_SUB   = 4'h5,
-        OPC_CMP   = 4'h6,
-        OPC_AND   = 4'h7,
-        OPC_OR    = 4'h8,
-        OPC_XOR   = 4'h9,
+        OPC_LD    = 4'h1, // two_byte
+        OPC_STA   = 4'h2, // two_byte
+        OPC_ADD   = 4'h3, // two_byte
+        OPC_ADC   = 4'h4, // two_byte
+        OPC_SUB   = 4'h5, // two_byte
+        OPC_CMP   = 4'h6, // two_byte
+        OPC_AND   = 4'h7, // two_byte
+        OPC_OR    = 4'h8, // two_byte
+        OPC_XOR   = 4'h9, // two_byte
         OPC_UNARY = 4'hA,
-        OPC_JMP   = 4'hB,
-        OPC_JCC   = 4'hC,
+        OPC_JMP   = 4'hB, // two_byte
+        OPC_JCC   = 4'hC, // two_byte
         //          4'hD is reserved
         //          4'hE is reserved
         OPC_HLT   = 4'hF;
@@ -48,14 +49,50 @@ module cpu (
     reg [1:0] state;
     
     assign mem_wdata = a;
-    assign flag_z = z;
-    assign flag_c = c;
-    assign halted = (state == S_HALT);
-    assign sync = (state == S_FETCH);
-    assign mem_addr = pc; // TODO
-    assign mem_we = 1'b0; // TODO
+    assign flag_z   = z;
+    assign flag_c   = c;
+    assign halted   = (state == S_HALT);
+    assign sync     = (state == S_FETCH);
+    assign mem_addr = pc;   // TODO
+    assign mem_we   = 1'b0; // TODO
+
+    wire [7:0] instr = (state == S_FETCH) ? mem_rdata : ir;
+
+    wire [3:0] opc = instr[7:4];
+    wire imm       = instr[3];
+
+    // two_byte is 1 for LD, STA, ADD, ADC, SUB, CMP, AND, OR, XOR, JMP, JCC
+    wire ld_to_xor = (opc >= OPC_LD) && (opc <= OPC_XOR);  // 0x1-0x9
+    wire two_byte  = ld_to_xor || (opc == OPC_JMP) || (opc == OPC_JCC);
+
+    wire mem_op = ld_to_xor && (!imm || (opc == OPC_STA));
+
+    reg [1:0] next_state;
+
+    always @(*) begin
+        next_state = state;
+
+        case (state)
+            S_FETCH: begin
+                if (opc == OPC_HLT) next_state = S_HALT;
+                else if (two_byte) next_state = S_OPERAND;
+                else next_state = S_EXEC;
+            end
+            S_OPERAND: begin
+                if (mem_op) next_state = S_EXEC;
+                else next_state = S_FETCH;
+            end
+            S_EXEC: begin
+                next_state = S_FETCH;
+            end
+            S_HALT: begin
+                next_state = S_HALT;
+            end
+        endcase
+    end
 
     always @(posedge clk) begin
+        // values on reset
         if (!rst_n) begin
             a     <= 8'h00;
             pc    <= 7'h00;
@@ -65,7 +102,7 @@ module cpu (
             c     <= 1'b0;
             state <= S_FETCH;            
         end else begin
-
+            state <= next_state;
         end
     end
 
