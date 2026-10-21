@@ -53,8 +53,7 @@ module cpu (
     assign flag_c   = c;
     assign halted   = (state == S_HALT);
     assign sync     = (state == S_FETCH);
-    assign mem_addr = pc;   // TODO
-    assign mem_we   = 1'b0; // TODO
+
 
     wire [7:0] instr = (state == S_FETCH) ? mem_rdata : ir;
 
@@ -66,6 +65,9 @@ module cpu (
     wire two_byte  = ld_to_xor || (opc == OPC_JMP) || (opc == OPC_JCC);
 
     wire mem_op = ld_to_xor && (!imm || (opc == OPC_STA));
+
+    assign mem_addr = (state == S_EXEC && mem_op) ? mar : pc;
+    assign mem_we   = (state == S_EXEC && opc == OPC_STA);
 
     reg [1:0] next_state;
 
@@ -88,6 +90,7 @@ module cpu (
             S_HALT: begin
                 next_state = S_HALT;
             end
+            default: next_state = S_FETCH;
         endcase
     end
 
@@ -103,6 +106,18 @@ module cpu (
             state <= S_FETCH;            
         end else begin
             state <= next_state;
+
+            case (state)
+                S_FETCH: begin
+                    ir <= mem_rdata;
+                    pc <= pc + 7'd1;
+                end
+                S_OPERAND: begin
+                    pc <= pc + 7'd1;
+                    if (mem_op) mar <= mem_rdata[6:0];
+                end
+                default: ;
+            endcase
         end
     end
 
