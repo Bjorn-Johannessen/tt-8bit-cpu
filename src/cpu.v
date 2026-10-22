@@ -60,6 +60,61 @@ module cpu (
     wire [3:0] opc = instr[7:4];
     wire imm       = instr[3];
 
+    // ALU op-codes (excluding the unary codes)
+    localparam [3:0]
+        ALU_PASS   = 4'h0,
+        ALU_ADD    = 4'h1,
+        ALU_ADC    = 4'h2,
+        ALU_SUB    = 4'h3,
+        ALU_AND    = 4'h4,
+        ALU_OR     = 4'h5,
+        ALU_XOR    = 4'h6;
+
+    reg  [3:0] alu_op;
+    wire [7:0] alu_result;
+    wire       alu_z;
+    wire       alu_c;
+
+    always @(*) begin
+        case (opc)
+            OPC_LD: begin 
+                alu_op = ALU_PASS; 
+            end
+            OPC_ADD: begin 
+                alu_op = ALU_ADD; 
+            end
+            OPC_ADC: begin
+                alu_op = ALU_ADC;
+            end
+            OPC_SUB, OPC_CMP: begin
+                alu_op = ALU_SUB;
+            end
+            OPC_AND: begin
+                alu_op = ALU_AND;
+            end
+            OPC_OR: begin
+                alu_op = ALU_OR;
+            end
+            OPC_XOR: begin
+                alu_op = ALU_XOR;
+            end
+            OPC_UNARY: begin
+                alu_op = {1'b1, instr[2:0]};
+            end
+            default: alu_op = ALU_PASS;
+        endcase
+    end
+
+        alu u_alu (
+        .a      (a),
+        .b      (mem_rdata),
+        .op     (alu_op),
+        .cin    (c),
+        .result (alu_result),
+        .z      (alu_z),
+        .c_out  (alu_c)
+    );
+
     // two_byte is 1 for LD, STA, ADD, ADC, SUB, CMP, AND, OR, XOR, JMP, JCC
     wire ld_to_xor = (opc >= OPC_LD) && (opc <= OPC_XOR);  // 0x1-0x9
     wire two_byte  = ld_to_xor || (opc == OPC_JMP) || (opc == OPC_JCC);
